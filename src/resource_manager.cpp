@@ -37,22 +37,12 @@ ResourceManager::~ResourceManager() {
 
 void ResourceManager::init() {
 
-	shaderPrograms.emplace("default", ShaderProgram(readFile("res/shaders/v_default.glsl"), readFile("res/shaders/f_default.glsl")));
-	shaderPrograms.emplace("custom", ShaderProgram(readFile("res/shaders/v_default.glsl"), readFile("res/shaders/f_custom_color.glsl")));
-	shaderPrograms.emplace("gradient", ShaderProgram(readFile("res/shaders/v_veer.glsl"), readFile("res/shaders/f_veer.glsl")));
-	shaderPrograms.emplace("texture", ShaderProgram(readFile("res/shaders/v_texture.glsl"), readFile("res/shaders/f_texture.glsl")));
-	shaderPrograms.emplace("circle", ShaderProgram(readFile("res/shaders/v_circle.glsl"), readFile("res/shaders/f_circle.glsl")));
-	shaderPrograms.emplace("move", ShaderProgram(readFile("res/shaders/v_move.glsl"), readFile("res/shaders/f_veer.glsl")));
-	shaderPrograms.emplace("model", ShaderProgram(readFile("res/shaders/v_model.glsl"), readFile("res/shaders/f_model.glsl")));
-	shaderPrograms.emplace("directionalLight", ShaderProgram(readFile("res/shaders/v_light.glsl"), readFile("res/shaders/f_directional_light.glsl")));
+	shaderPrograms.emplace("directionalLight", ShaderProgram(readFile("res/shaders/v_lighting.glsl"), readFile("res/shaders/f_lighting.glsl")));
 
 	try
 	{
 		m_textures.emplace("skull", Texture2D("res/textures/skull.jpg"));
-		m_textures.emplace("default", Texture2D("res/textures/awesomeface.png"));
-		m_textures.emplace("container", Texture2D("res/textures/container.jpg"));
 		m_textures.emplace("barrel", Texture2D("res/textures/barrel.png"));
-		//m_textures.emplace("drum", Texture2D("res/textures/drum.png"));
 	}
 	catch (const std::exception& e)
 	{
@@ -61,7 +51,6 @@ void ResourceManager::init() {
 
 	m_meshes.emplace("skull", Mesh("res/meshes/skull.obj"));
 	m_meshes.emplace("barrel", Mesh("res/meshes/barrel.obj"));
-	//m_meshes.emplace("drum", Mesh("res/meshes/drum.obj"));
 
 	VBOLayout menuVBOLayout;
 	menuVBOLayout.addLayoutElement(2, GL_FLOAT, GL_FALSE);

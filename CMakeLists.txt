@@ -1,4 +1,4 @@
-﻿set(PROJ_NAME Laba14)
+﻿set(PROJ_NAME indiv3)
 set(PROJ_SRC 
 				"main.cpp"
 				"src/application.cpp"
@@ -20,16 +20,9 @@ set(PROJ_SRC
 				"src/sub_texture.cpp"
 				"src/stb_image.h"
 				"src/object.h"
-				"src/cube.h"
-				"src/cube.cpp"
-				"src/tetra.h"
-				"src/tetra.cpp"
-				"src/cub_mixed_textures.h"
-				"src/cub_mixed_textures.cpp"
 				"src/mesh.h"
 				"src/mesh.cpp"
-				"src/circle.h" 
-				"src/circle.cpp" "src/camera.h" "src/camera.cpp")
+				"src/camera.h" "src/camera.cpp")
 
 add_executable (${PROJ_NAME} ${PROJ_SRC})
 

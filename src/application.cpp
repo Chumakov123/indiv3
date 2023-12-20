@@ -2,9 +2,6 @@
 #include "logger.hpp"
 #include "callback_manager.h"
 #include "renderer.h"
-#include "cub_mixed_textures.h"
-#include "tetra.h"
-#include "circle.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
@@ -59,10 +56,6 @@ void Application::init()
 	resourceManager->init();
 	glEnable(GL_DEPTH_TEST);
 
-	primitives["tetra"] = new Tetra();
-	primitives["cube"] = new CubMixedTextures();
-	primitives["circle"] = new Circle();
-
 	glfwSetCursorPos(window, 450, 450);
 
 }
@@ -85,7 +78,6 @@ void Application::start()
 	Renderer::setClearColor(65.0f / 255.0f, 74.0f / 255.0f, 76.0f / 255.0f, 1.0f);
 
 	ResourceManager* resources = &ResourceManager::getInstance();
-	ShaderProgram* program = &resources->getProgram("model");
 	Texture2D* texture_skull = &resources->getTexture("skull");
 	Texture2D* texture_barrel = &resources->getTexture("barrel");
 	Mesh* skull_obj = &resources->getMesh("skull");
@@ -93,10 +85,6 @@ void Application::start()
 
 	//Матрица проекции - не меняется между кадрами, поэтому устанавливается вне цикла
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-	program->use();
-	program->setUniform("projection", projection);
-	program->unbind();
 
 	//Направленный источник света (Фонг)
 	ShaderProgram* directionalLight = &resources->getProgram("directionalLight");
