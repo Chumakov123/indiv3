@@ -28,8 +28,7 @@ uniform struct Light {
 } light;
 
 uniform vec3 ViewPos;
-uniform int lightingMethod;
-uniform int lighting_type;
+uniform int lighting_type; // 0 - point, 1 - directional, 2 - spot
 
 void main() {
     vec3 norm = normalize(Normal);
@@ -49,46 +48,11 @@ void main() {
 
     float theta = dot(lightDir, normalize(-light.direction));
 
-    switch(lightingMethod) {
-        case 0: { // Phong
-            float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-            specular = spec * light.color * material.specularColor;
-            result = (material.ambientColor + light.intensity * (diff * material.diffuseColor + specular) + material.emissionColor);
-            if(lighting_type == 0) result*=attenuation;
-            if(lighting_type == 2 && theta < light.cutOff) result = material.ambientColor;
-            break;
-        }
-        case 1: { // Toon
-            float toonDiff = floor(diff * 5.0) / 5.0; // 5.0 - количество уровней освещенности
-            float specThreshold = 0.2;
-            float spec = step(specThreshold, max(dot(viewDir, reflectDir), 0.0)) * pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-            specular = spec * light.color * material.specularColor;
-            result = (material.ambientColor + toonDiff * material.diffuseColor + specular);
-            if(lighting_type == 0) result*=attenuation;
-            if(lighting_type == 2 && theta < light.cutOff) result = material.ambientColor;
-            break;
-        }
-        case 2: { // Rim
-            vec3 rimColor = vec3(0.8, 0.0, 0.2);
-	        float bias = 0.3;
-	        float rimPower = 8.0;
-
-            vec3 h = lightDir + viewDir;
-	        h = normalize(h / length(h));
-
-            result = material.emissionColor + material.ambientColor;
-	        float Ndot = max(dot(norm, lightDir), 0.0);
-	        result += material.diffuseColor * Ndot;
-
-	        float RdotVpow = max(pow(dot(norm, h), material.shininess), 0.0);
-	        result += material.specularColor * RdotVpow;
-
-	        result += rimColor * pow(1.0 + bias - max(dot(norm, viewDir), 0.0), rimPower);
-            if(lighting_type == 0) result*=attenuation;
-            if(lighting_type == 2 && theta < light.cutOff) result = material.ambientColor;
-            break;
-        }
-    }
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    specular = spec * light.color * material.specularColor;
+    result = (material.ambientColor + light.intensity * (diff * material.diffuseColor + specular) + material.emissionColor);
+    if(lighting_type == 0) result*=attenuation;
+    if(lighting_type == 2 && theta < light.cutOff) result = material.ambientColor;
 
     // Добавление текстуры
     vec4 textureColor = texture(texture1, TexCoord);

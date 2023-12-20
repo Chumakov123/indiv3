@@ -2,8 +2,12 @@
 #include "logger.hpp"
 #include "callback_manager.h"
 #include "renderer.h"
+#include "game_object.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/euler_angles.hpp>
 #include <chrono>
+#include <string>
+#include <unordered_map>
 
 Application& Application::get_instance()
 {
@@ -60,28 +64,38 @@ void Application::init()
 
 }
 
-void RenderObj(glm::vec3 position, Mesh* obj, ShaderProgram* program,
-	Texture2D* texture, float scale, glm::mat4 view, glm::vec3 rotation, float angle,
-	int shading, glm::vec3 viewPos, int light_type);
+void RenderObject(GameObject* gameObject, ShaderProgram* program);
+glm::mat4 RotationMatrix(const glm::vec3& rotationAngles);
 
-//TODO вынести в отдельный файл
-struct Material {
-	glm::vec3 diffuseColor;
-	glm::vec3 specularColor;
-	glm::vec3 emissionColor;
-	glm::vec3 ambientColor;
-	float shininess;
-};
 
 void Application::start()
 {
 	Renderer::setClearColor(65.0f / 255.0f, 74.0f / 255.0f, 76.0f / 255.0f, 1.0f);
+
+	Material material = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
+					 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
+					 glm::vec3(0.0f, 0.0f, 0.0f),  // emissionColor
+					 glm::vec3(0.1f, 0.1f, 0.1f),  // ambientColor
+					 32.0f };                      // shininess
 
 	ResourceManager* resources = &ResourceManager::getInstance();
 	Texture2D* texture_skull = &resources->getTexture("skull");
 	Texture2D* texture_barrel = &resources->getTexture("barrel");
 	Mesh* skull_obj = &resources->getMesh("skull");
 	Mesh* barrel_obj = &resources->getMesh("barrel");
+
+	//
+	Texture2D* planeTex = &resources->getTexture("plane");
+	Texture2D* treeTex = &resources->getTexture("tree");
+	Texture2D* boxTex = &resources->getTexture("box");
+	Mesh* planeObj = &resources->getMesh("plane");
+	Mesh* treeObj = &resources->getMesh("tree");
+	Mesh* boxObj = &resources->getMesh("box");
+
+	std::unordered_map<std::string, GameObject*> gameObjects;
+
+	gameObjects["tree"] = new GameObject(treeObj, treeTex, &material, 0.01, glm::vec3(-20, 0, -30));
+	gameObjects["player"] = new GameObject(planeObj, planeTex, &material, 0.01, glm::vec3(-20, 8, -20));
 
 	//Матрица проекции - не меняется между кадрами, поэтому устанавливается вне цикла
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
@@ -92,7 +106,7 @@ void Application::start()
 	directionalLight->setUniform("projection", projection);
 
 	glm::vec3 lightPosition(1, 2, 8);
-	glm::vec3 lightDirection(0.0f, 0, -1.0f);
+	glm::vec3 lightDirection(-0.1f, -0.5f, -0.3f);
 	glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 	float lightIntensity = 1.0f;
 
@@ -105,11 +119,7 @@ void Application::start()
 	directionalLight->setUniform("light.quadratic", 0.032f);
 	directionalLight->setUniform("light.cutOff", glm::cos(glm::radians(12.5f)));
 
-	Material material = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
-						 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
-						 glm::vec3(0.0f, 0.0f, 0.0f),  // emissionColor
-						 glm::vec3(0.1f, 0.1f, 0.1f),  // ambientColor
-						 32.0f };                      // shininess
+	directionalLight->setUniform("lighting_type", 1);
 
 	directionalLight->setUniform("material.diffuseColor", material.diffuseColor);
 	directionalLight->setUniform("material.specularColor", material.specularColor);
@@ -127,16 +137,16 @@ void Application::start()
 
 		Renderer::clear();
 		glm::mat4 view = camera.GetViewMatrix();
-
 		glm::vec3 viewPos = camera.GetPosition();
-		RenderObj(glm::vec3(1, 0, 0), barrel_obj, directionalLight, texture_barrel,
-			1.0f, view, glm::vec3(0.0f, 0.0f, 1.0f), 0, 0, viewPos, m_current_task - 1);
 
-		RenderObj(glm::vec3(-20, 8, -50), skull_obj, directionalLight, texture_skull,
-			0.5f, view, glm::vec3(1.0f, 0.0f, 0.0f), 30, 1, viewPos, m_current_task - 1);
+		directionalLight->use();
+		directionalLight->setUniform("view", view);
+		directionalLight->setUniform("ViewPos", viewPos);
+		directionalLight->unbind();
 
-		RenderObj(glm::vec3(-20, -8, -50), skull_obj, directionalLight, texture_skull,
-			0.5f, view, glm::vec3(1.0f, 0.0f, 0.0f), 30, 2, viewPos, m_current_task - 1);
+		for (const auto& x : gameObjects) {
+			RenderObject(x.second, directionalLight);
+		}
 
 		// Swap the screen buffers
 		glfwSwapBuffers(window);
@@ -165,28 +175,38 @@ void Application::select_task(int value)
 
 Application::Application(std::string name, int width, int height) : name(std::move(name)), width(width), height(height) {}
 
-void RenderObj(glm::vec3 position, Mesh* obj, ShaderProgram* program,
-	Texture2D* texture, float scale, glm::mat4 view, glm::vec3 rotation,
-	float angle, int shading, glm::vec3 viewPos, int light_type)
+glm::mat4 RotationMatrix(const glm::vec3& rotationAngles) {
+	glm::mat4 rotationMatrix = glm::eulerAngleXYZ(
+		glm::radians(rotationAngles.x), // pitch (тангаж)
+		glm::radians(rotationAngles.y), // yaw (рыскание)
+		glm::radians(rotationAngles.z)  // roll (крен)
+	);
+	return rotationMatrix;
+}
+
+void RenderObject(GameObject* gameObject, ShaderProgram* program)
 {
 	//Матрица модели - меняется между кадрами, поэтому устанавливается в цикле
-	glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
-	model = glm::rotate(model, angle, rotation);
-	model = glm::scale(model, glm::vec3(scale));
+	glm::mat4 model = glm::translate(glm::mat4(1.0f), gameObject->position);
+	model *= RotationMatrix(gameObject->rotation);
+	model = glm::scale(model, glm::vec3(gameObject->scale));
 
 	program->use();
-	program->setUniform("view", view);
 	program->setUniform("model", model);
-	program->setUniform("ViewPos", viewPos);
-	program->setUniform("lightingMethod", shading);
-	program->setUniform("lighting_type", light_type);
-	glActiveTexture(GL_TEXTURE0);
-	texture->bind();
 
-	glBindVertexArray(obj->VAO);
-	glDrawArrays(GL_TRIANGLES, 0, obj->vertices.size());
+	program->setUniform("material.diffuseColor", gameObject->material->diffuseColor);
+	program->setUniform("material.specularColor", gameObject->material->specularColor);
+	program->setUniform("material.ambientColor", gameObject->material->ambientColor);
+	program->setUniform("material.emissionColor", gameObject->material->emissionColor);
+	program->setUniform("material.shininess", gameObject->material->shininess);
+
+	glActiveTexture(GL_TEXTURE0);
+	gameObject->texture->bind();
+
+	glBindVertexArray(gameObject->mesh->VAO);
+	glDrawArrays(GL_TRIANGLES, 0, gameObject->mesh->vertices.size());
 	glBindVertexArray(0);
 
-	texture->unbind();
+	gameObject->texture->unbind();
 	program->unbind();
 }

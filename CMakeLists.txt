@@ -22,9 +22,11 @@ set(PROJ_SRC
 				"src/object.h"
 				"src/mesh.h"
 				"src/mesh.cpp"
-				"src/camera.h" "src/camera.cpp")
+				"src/camera.h" "src/camera.cpp"
+				"src/game_object.h" "src/game_object.cpp"
+				"src/material.h")
 
-add_executable (${PROJ_NAME} ${PROJ_SRC})
+add_executable (${PROJ_NAME} ${PROJ_SRC} "src/game_object.h")
 
 target_include_directories(${PROJ_NAME} PRIVATE src)
 

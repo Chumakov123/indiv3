@@ -1,5 +1,6 @@
 
 #include "resource_manager.h"
+#include "game_object.h"
 
 #include <iostream>
 #include <fstream>
@@ -38,6 +39,15 @@ ResourceManager::~ResourceManager() {
 void ResourceManager::init() {
 
 	shaderPrograms.emplace("directionalLight", ShaderProgram(readFile("res/shaders/v_lighting.glsl"), readFile("res/shaders/f_lighting.glsl")));
+
+	//Новые модели и текстуры
+	m_meshes.emplace("tree", Mesh("res/meshes/tree.obj"));
+	m_textures.emplace("tree", Texture2D("res/textures/tree.jpg"));
+	m_meshes.emplace("plane", Mesh("res/meshes/airplane.obj"));
+	m_textures.emplace("plane", Texture2D("res/textures/airplane.jpg"));
+	m_meshes.emplace("box", Mesh("res/meshes/box.obj"));
+	m_textures.emplace("box", Texture2D("res/textures/box.jpg"));
+	m_meshes.emplace("lamp", Mesh("res/meshes/lamp.obj"));
 
 	try
 	{
