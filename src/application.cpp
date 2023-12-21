@@ -8,6 +8,7 @@
 #include <chrono>
 #include <string>
 #include <unordered_map>
+#define MAX_LIGHTS 10
 
 Application& Application::get_instance()
 {
@@ -64,15 +65,41 @@ void Application::init()
 
 }
 
+struct Light {
+	enum class Type {
+		Point = 0,
+		Directional = 1,
+		Spot = 2
+	};
+
+	int type;
+	glm::vec3 position;
+	glm::vec3 direction;
+	glm::vec3 color;
+	float intensity;
+	float constant;
+	float linear;
+	float quadratic;
+	float cutOff;
+};
+
 void RenderObject(GameObject* gameObject, ShaderProgram* program);
 glm::mat4 RotationMatrix(const glm::vec3& rotationAngles);
+void AddLight(Light* source);
+void RemoveLight(Light* source);
+void RemoveLastLight();
+void ApplyLight(ShaderProgram* program, Light* lightSource, int i);
 
+std::unordered_map<std::string, GameObject*> gameObjects;
+Light* lightSources[MAX_LIGHTS];
+int numLights = 0;
 
 void Application::start()
 {
+
 	Renderer::setClearColor(65.0f / 255.0f, 74.0f / 255.0f, 76.0f / 255.0f, 1.0f);
 
-	Material material = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
+	Material defaultMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
 					 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
 					 glm::vec3(0.0f, 0.0f, 0.0f),  // emissionColor
 					 glm::vec3(0.1f, 0.1f, 0.1f),  // ambientColor
@@ -84,54 +111,47 @@ void Application::start()
 	Mesh* skull_obj = &resources->getMesh("skull");
 	Mesh* barrel_obj = &resources->getMesh("barrel");
 
-	//
+	//MESHES AND TEXTURES
+	Texture2D* terrainTex = &resources->getTexture("terrain");
 	Texture2D* planeTex = &resources->getTexture("plane");
 	Texture2D* treeTex = &resources->getTexture("tree");
 	Texture2D* boxTex = &resources->getTexture("box");
+	Mesh* terrainObj = &resources->getMesh("terrain");
 	Mesh* planeObj = &resources->getMesh("plane");
 	Mesh* treeObj = &resources->getMesh("tree");
 	Mesh* boxObj = &resources->getMesh("box");
 
-	std::unordered_map<std::string, GameObject*> gameObjects;
-
-	gameObjects["tree"] = new GameObject(treeObj, treeTex, &material, 0.01, glm::vec3(-20, 0, -30));
-	gameObjects["player"] = new GameObject(planeObj, planeTex, &material, 0.01, glm::vec3(-20, 8, -20));
+	//GAME OBJECTS
+	gameObjects["terrain"] = new GameObject(terrainObj, terrainTex, &defaultMaterial, 4);
+	gameObjects["tree"] = new GameObject(treeObj, treeTex, &defaultMaterial, 0.1, glm::vec3(-10, 20, -20), glm::vec3(-90,0,0));
+	gameObjects["player"] = new GameObject(planeObj, planeTex, &defaultMaterial, 0.01, glm::vec3(-10, 28, -10), glm::vec3(-90, 0, 0));
 
 	//Матрица проекции - не меняется между кадрами, поэтому устанавливается вне цикла
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-	//Направленный источник света (Фонг)
 	ShaderProgram* directionalLight = &resources->getProgram("directionalLight");
 	directionalLight->use();
 	directionalLight->setUniform("projection", projection);
+	
+	//LIGHTS
+	AddLight(new Light{ (int)Light::Type::Directional, 
+		glm::vec3(), // pos
+		glm::vec3(-0.1f, -0.5f, -0.3f), //dir
+		glm::vec3(1), //col
+		0.8}); //int
+	//AddLight(new Light{ (int)Light::Type::Point, 
+	//	glm::vec3(-5,0,-15), 
+	//	glm::vec3(), 
+	//	glm::vec3(1), 0.8 });
 
-	glm::vec3 lightPosition(1, 2, 8);
-	glm::vec3 lightDirection(-0.1f, -0.5f, -0.3f);
-	glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-	float lightIntensity = 1.0f;
-
-	directionalLight->setUniform("light.position", lightPosition);
-	directionalLight->setUniform("light.direction", lightDirection);
-	directionalLight->setUniform("light.color", lightColor);
-	directionalLight->setUniform("light.intensity", lightIntensity);
-	directionalLight->setUniform("light.constant", 1.0f);
-	directionalLight->setUniform("light.linear", 0.09f);
-	directionalLight->setUniform("light.quadratic", 0.032f);
-	directionalLight->setUniform("light.cutOff", glm::cos(glm::radians(12.5f)));
-
-	directionalLight->setUniform("lighting_type", 1);
-
-	directionalLight->setUniform("material.diffuseColor", material.diffuseColor);
-	directionalLight->setUniform("material.specularColor", material.specularColor);
-	directionalLight->setUniform("material.emissionColor", material.emissionColor);
-	directionalLight->setUniform("material.ambientColor", material.ambientColor);
-	directionalLight->setUniform("material.shininess", material.shininess);
-
+	directionalLight->setUniform("numLights", numLights);
+	for (int i = 0; i < numLights; ++i) {
+		ApplyLight(directionalLight, lightSources[i], i);
+	}
 	directionalLight->unbind();
 
 	// Game loop
 	auto start = std::chrono::steady_clock::now();
-	float r = 0; //Вращение черепа
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
@@ -154,8 +174,6 @@ void Application::start()
 	resourceManager->destroy();
 	glfwTerminate();
 }
-
-
 
 void Application::close()
 {
@@ -182,6 +200,48 @@ glm::mat4 RotationMatrix(const glm::vec3& rotationAngles) {
 		glm::radians(rotationAngles.z)  // roll (крен)
 	);
 	return rotationMatrix;
+}
+void ApplyLight(ShaderProgram* program, Light* lightSource, int i)
+{
+	std::string prefix = "lights[" + std::to_string(i) + "].";
+	program->setUniform((prefix + "type").c_str(), lightSource->type);
+	program->setUniform((prefix + "position").c_str(), lightSource->position);
+	program->setUniform((prefix + "direction").c_str(), lightSource->direction);
+	program->setUniform((prefix + "color").c_str(), lightSource->color);
+	program->setUniform((prefix + "intensity").c_str(), lightSource->intensity);
+	program->setUniform((prefix + "constant").c_str(), lightSource->constant);
+	program->setUniform((prefix + "linear").c_str(), lightSource->linear);
+	program->setUniform((prefix + "quadratic").c_str(), lightSource->quadratic);
+	program->setUniform((prefix + "cutOff").c_str(), lightSource->cutOff);
+}
+
+void AddLight(Light* source) {
+	if (numLights < MAX_LIGHTS) {
+		lightSources[numLights] = source;
+		++numLights;
+	}
+}
+
+void RemoveLight(Light* source) {
+	if (numLights > 0) {
+		int indexToRemove = -1;
+		for (int i = 0; i < numLights; ++i) {
+			if (lightSources[i] == source) {
+				indexToRemove = i;
+				break;
+			}
+		}
+
+		if (indexToRemove != -1) {
+			lightSources[indexToRemove] = lightSources[numLights - 1];
+			--numLights;
+		}
+	}
+}
+void RemoveLastLight() {
+	if (numLights > 0) {
+		--numLights;
+	}
 }
 
 void RenderObject(GameObject* gameObject, ShaderProgram* program)

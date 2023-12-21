@@ -8,14 +8,14 @@ std::vector<std::string> split(const std::string& s, const char delimiter) {
     while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
         token = s.substr(pos_start, pos_end - pos_start);
         if (!token.empty()) {
-            res.push_back(token);
+            res.push_back(std::move(token));
         }
         pos_start = pos_end + 1;
     }
 
     token = s.substr(pos_start);
     if (!token.empty()) {
-        res.push_back(token);
+        res.push_back(std::move(token));
     }
 
     return res;
@@ -103,7 +103,7 @@ void Mesh::parseFile(const std::string& filePath)
                     for (int j = 0; j < 2; ++j)
                         vertexData.texture[j] = (textureIndex != -1) ? vt[textureIndex][j] : 0.0f;
 
-                    vertices.push_back(vertexData);
+                    vertices.emplace_back(vertexData);
                 };
 
                 // Обработка треугольников и прямоугольников
