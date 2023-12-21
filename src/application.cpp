@@ -87,7 +87,22 @@ struct Light {
 
 class PlayerControl
 {
+public:
+	GameObject* player;
 
+	float velocity = 25;
+	glm::vec3 direction;
+
+	void Update(float deltaTime)
+	{
+		if (direction == glm::vec3())
+			return;
+		direction = glm::normalize(direction);
+		player->position += direction * velocity * deltaTime;
+		if (direction.y == 0)
+		player->rotation.z = glm::degrees(atan2(direction.x, direction.z))+90;
+		direction = glm::vec3();
+	}
 };
 
 class CloudManager
@@ -147,6 +162,7 @@ public:
 	}
 };
 CloudManager cloudManager = CloudManager();
+PlayerControl playerControl = PlayerControl();
 
 void RenderObject(GameObject* gameObject, ShaderProgram* program);
 glm::mat4 RotationMatrix(const glm::vec3& rotationAngles);
@@ -224,6 +240,8 @@ void Application::start()
 	gameObjects["lamp2"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(14.2697, 16.6533, -8.7417));
 	gameObjects["lamp3"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(-22.5987, 13.2782, 29.4179));
 
+	playerControl.player = gameObjects["player"];
+
 	//gameObjects["cloud0"] = new GameObject(cloudObj, cloudTex, &cloudMaterial, 0.75, glm::vec3(-22.5987, 30.2782, -10.8146), glm::vec3(-90, 0, 0));
 
 	for (int i = 0; i < 6; ++i) {
@@ -295,6 +313,7 @@ void Application::start()
 		std::chrono::duration<float> duration = currentTime - lastTime;
 		float deltaTime = duration.count();
 		cloudManager.Update(deltaTime);
+		playerControl.Update(deltaTime);
 		lastTime = currentTime;
 
 		glfwPollEvents();
@@ -339,6 +358,32 @@ void Application::PrintPosition()
 {
 	auto pos = camera.GetPosition();
 	std::cout << "pos: " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+	std::cout << "pitch: " << camera.Pitch << " yaw: " << camera.Yaw << std::endl;
+}
+
+void Application::ProcessKeyboard(PlayerMovement direction)
+{
+	switch (direction)
+	{
+	case PlayerMovement::FORWARD:
+		playerControl.direction = glm::vec3(0.0f, 0.0f, -1.0f);
+		break;
+	case PlayerMovement::BACKWARD:
+		playerControl.direction = glm::vec3(0.0f, 0.0f, 1.0f);
+		break;
+	case PlayerMovement::LEFT:
+		playerControl.direction = glm::vec3(-1.0f, 0.0f, 0.0f);
+		break;
+	case PlayerMovement::RIGHT:
+		playerControl.direction = glm::vec3(1.0f, 0.0f, 0.0f);
+		break;
+	case PlayerMovement::UP:
+		playerControl.direction = glm::vec3(0.0f, 1.0f, 0.0f);
+		break;
+	case PlayerMovement::DOWN:
+		playerControl.direction = glm::vec3(0.0f, -1.0f, 0.0f);
+		break;
+	}
 }
 
 Application::Application(std::string name, int width, int height) : name(std::move(name)), width(width), height(height) {}

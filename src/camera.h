@@ -11,8 +11,8 @@ enum Camera_Movement {
 };
 
 // Default camera values
-const float YAW = -90.0f;
-const float PITCH = 0.0f;
+const float YAW = -536.1;
+const float PITCH = -6.70003;
 const float SPEED = 2.5f;
 const float SENSITIVITY = 0.1f;
 
@@ -20,7 +20,7 @@ class Camera
 {
 public:
  
-    Camera(glm::vec3 position = glm::vec3(0.0f, 15.0f, 30.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH);
+    Camera(glm::vec3 position = glm::vec3(45.5763, 24.6922, 0.743469), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH);
        
     glm::mat4 GetViewMatrix();
 
@@ -30,6 +30,8 @@ public:
 
     void ProcessMouseMovement(float xpos, float ypos, bool constrainPitch = true);
   
+    float Yaw;
+    float Pitch;
 private:
 
     glm::vec3 Position;
@@ -40,8 +42,6 @@ private:
 
     float lastX = 450, lastY = 450;
 
-    float Yaw;
-    float Pitch;
 
     float MovementSpeed;
     float MouseSensitivity;

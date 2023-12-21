@@ -8,8 +8,17 @@
 #include "object.h"
 #include "camera.h"
 
+
 class Application {
 public:
+	enum PlayerMovement {
+		FORWARD,
+		BACKWARD,
+		LEFT,
+		RIGHT,
+		UP,
+		DOWN
+	};
 	static Application& get_instance();
 
 	void init();
@@ -29,6 +38,8 @@ public:
 	void select_task(int value);
 
 	void PrintPosition();
+	void ProcessKeyboard(PlayerMovement direction);
+
 
 	Camera camera = Camera();
 private:
