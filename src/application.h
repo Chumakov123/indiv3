@@ -28,6 +28,8 @@ public:
 
 	void select_task(int value);
 
+	void PrintPosition();
+
 	Camera camera = Camera();
 private:
 	Application(std::string name, int width, int height);

@@ -18,7 +18,8 @@ void CallbackManager::key_callback(GLFWwindow* window, int key, int scancode, in
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
-	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+		Application::get_instance().PrintPosition();
 	}
 	if (key == GLFW_KEY_W) {
 		Application::get_instance().camera.ProcessKeyboard(FORWARD, 0.2);

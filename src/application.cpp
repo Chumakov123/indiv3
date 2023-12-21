@@ -99,35 +99,63 @@ void Application::start()
 
 	Renderer::setClearColor(65.0f / 255.0f, 74.0f / 255.0f, 76.0f / 255.0f, 1.0f);
 
-	Material defaultMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
-					 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
-					 glm::vec3(0.0f, 0.0f, 0.0f),  // emissionColor
-					 glm::vec3(0.1f, 0.1f, 0.1f),  // ambientColor
-					 32.0f };                      // shininess
-
 	ResourceManager* resources = &ResourceManager::getInstance();
 	Texture2D* texture_skull = &resources->getTexture("skull");
 	Texture2D* texture_barrel = &resources->getTexture("barrel");
 	Mesh* skull_obj = &resources->getMesh("skull");
 	Mesh* barrel_obj = &resources->getMesh("barrel");
 
-	//MESHES AND TEXTURES
+#pragma region Materials
+	Material defaultMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
+				 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
+				 glm::vec3(0.0f, 0.0f, 0.0f),  // emissionColor
+				 glm::vec3(0.01f, 0.01f, 0.01f),  // ambientColor
+				 32.0f };                      // shininess
+	Material planeMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
+					 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
+					 glm::vec3(0.0f, 0.0f, 0.0f),  // emissionColor
+					 glm::vec3(0.05f, 0.05f, 0.05f),  // ambientColor
+					 8.0f };                      // shininess
+	Material lampMaterial = { glm::vec3(0.6f, 0.7f, 0.3f), // diffuseColor
+					 glm::vec3(1.0f, 1.0f, 1.0f),  // specularColor
+					 glm::vec3(0.7f, 0.7f, 0.7f),  // emissionColor
+					 glm::vec3(0.01f, 0.01f, 0.01f),  // ambientColor
+					 32.0f };                      // shininess
+	Material cloudMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
+					 glm::vec3(0.8f, 0.8f, 1.0f),  // specularColor
+					 glm::vec3(0.1f, 0.1f, 0.1f),  // emissionColor
+					 glm::vec3(0.3f, 0.3f, 0.3f),  // ambientColor
+					 64.0f };
+#pragma endregion
+
+#pragma region Meshes and textures
 	Texture2D* terrainTex = &resources->getTexture("terrain");
 	Texture2D* planeTex = &resources->getTexture("plane");
 	Texture2D* treeTex = &resources->getTexture("tree");
 	Texture2D* boxTex = &resources->getTexture("box");
+	Texture2D* cloudTex = &resources->getTexture("cloud");
+	Texture2D* defaultTex = &resources->getTexture("default");
 	Mesh* terrainObj = &resources->getMesh("terrain");
 	Mesh* planeObj = &resources->getMesh("plane");
 	Mesh* treeObj = &resources->getMesh("tree");
 	Mesh* boxObj = &resources->getMesh("box");
+	Mesh* lampObj = &resources->getMesh("lamp");
+	Mesh* cloudObj = &resources->getMesh("cloud");
+#pragma endregion
 
 	//GAME OBJECTS
 	gameObjects["terrain"] = new GameObject(terrainObj, terrainTex, &defaultMaterial, 4);
-	gameObjects["tree"] = new GameObject(treeObj, treeTex, &defaultMaterial, 0.1, glm::vec3(-10, 20, -20), glm::vec3(-90,0,0));
-	gameObjects["player"] = new GameObject(planeObj, planeTex, &defaultMaterial, 0.01, glm::vec3(-10, 28, -10), glm::vec3(-90, 0, 0));
+	gameObjects["tree"] = new GameObject(treeObj, treeTex, &defaultMaterial, 0.1, glm::vec3(-26.2752, 16.8992, -10.8146), glm::vec3(-90,0,0));
+	gameObjects["player"] = new GameObject(planeObj, planeTex, &planeMaterial, 0.01, glm::vec3(-10, 28, -10), glm::vec3(-90, 0, 0));
+	gameObjects["lamp0"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(-20.0657, 17.7, -14.6416));
+	gameObjects["lamp1"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(-49.2922, 14.1686, -42.9111));
+	gameObjects["lamp2"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(14.2697, 16.6533, -8.7417));
+	gameObjects["lamp3"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(-22.5987, 13.2782, 29.4179));
+
+	gameObjects["cloud0"] = new GameObject(cloudObj, cloudTex, &cloudMaterial, 0.75, glm::vec3(-22.5987, 30.2782, -10.8146), glm::vec3(-90, 0, 0));
 
 	//Матрица проекции - не меняется между кадрами, поэтому устанавливается вне цикла
-	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 200.0f);
 
 	ShaderProgram* directionalLight = &resources->getProgram("directionalLight");
 	directionalLight->use();
@@ -135,14 +163,38 @@ void Application::start()
 	
 	//LIGHTS
 	AddLight(new Light{ (int)Light::Type::Directional, 
-		glm::vec3(), // pos
-		glm::vec3(-0.1f, -0.5f, -0.3f), //dir
-		glm::vec3(1), //col
-		0.8}); //int
-	//AddLight(new Light{ (int)Light::Type::Point, 
-	//	glm::vec3(-5,0,-15), 
-	//	glm::vec3(), 
-	//	glm::vec3(1), 0.8 });
+			glm::vec3(), // pos
+			glm::vec3(-0.1, -0.8, -0.3), //dir
+			glm::vec3(1), //col
+			0.5}); //int
+	AddLight(new Light{ (int)Light::Type::Point, 
+			glm::vec3(gameObjects["lamp0"]->position),
+			glm::vec3(), 
+			glm::vec3(1),
+			8,
+			0.5,
+			10});
+	AddLight(new Light{ (int)Light::Type::Point,
+			glm::vec3(gameObjects["lamp1"]->position),
+			glm::vec3(),
+			glm::vec3(1),
+			8,
+			0.5,
+			10 });
+	AddLight(new Light{ (int)Light::Type::Point,
+			glm::vec3(gameObjects["lamp2"]->position),
+			glm::vec3(),
+			glm::vec3(1),
+			8,
+			0.5,
+			10 });
+	AddLight(new Light{ (int)Light::Type::Point,
+			glm::vec3(gameObjects["lamp3"]->position),
+			glm::vec3(),
+			glm::vec3(1),
+			8,
+			0.5,
+			10 });
 
 	directionalLight->setUniform("numLights", numLights);
 	for (int i = 0; i < numLights; ++i) {
@@ -189,6 +241,12 @@ void Application::select_task(int value)
 {
 	if (value < 1 || value > 4)return;
 	m_current_task = value;
+}
+
+void Application::PrintPosition()
+{
+	auto pos = camera.GetPosition();
+	std::cout << "pos: " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
 }
 
 Application::Application(std::string name, int width, int height) : name(std::move(name)), width(width), height(height) {}

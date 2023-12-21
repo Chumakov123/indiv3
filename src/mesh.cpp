@@ -68,18 +68,21 @@ void Mesh::parseFile(const std::string& filePath)
         std::vector<std::vector<float>> v, vt, vn;
         std::string line;
 
-        auto parseValues = [](const std::string& data) {
-            std::istringstream iss(data);
+        std::istringstream iss;
+
+        auto parseValues = [&iss](const std::string& data) {
+            iss.str(data);
             std::vector<float> values;
             std::string value;
             while (iss >> value) {
                 values.emplace_back(std::stof(value));
             }
+            iss.clear();
             return values;
         };
 
         while (std::getline(obj, line)) {
-            std::istringstream iss(line);
+            iss.str(line);
             std::string type;
             iss >> type;
 
@@ -119,6 +122,7 @@ void Mesh::parseFile(const std::string& filePath)
                     }
                 }
             }
+            iss.clear();
         }
         std::cout << filePath << " has been loaded. Total vertices: " << vertices.size() << std::endl;
         return;

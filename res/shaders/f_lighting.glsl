@@ -40,6 +40,7 @@ void main() {
     vec3 result = material.ambientColor;
 
     for (int i = 0; i < numLights; ++i) {
+        vec3 local_result = vec3(0,0,0);
         vec3 lightDir = normalize(lights[i].position - FragPos);
         if (lights[i].type == 1) lightDir = normalize(-lights[i].direction);
         if (lights[i].type == 2) {
@@ -57,8 +58,9 @@ void main() {
 
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
         specular = spec * lights[i].color * material.specularColor;
-        result += lights[i].intensity * (diff * material.diffuseColor + specular);
-        if (lights[i].type == 0) result *= attenuation;
+        local_result = lights[i].intensity * (diff * material.diffuseColor + specular);
+        if (lights[i].type == 0) local_result *= attenuation;
+        result += local_result;
     }
 
     result += material.emissionColor;

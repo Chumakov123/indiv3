@@ -41,6 +41,9 @@ void ResourceManager::init() {
 	shaderPrograms.emplace("directionalLight", ShaderProgram(readFile("res/shaders/v_lighting.glsl"), readFile("res/shaders/f_lighting.glsl")));
 
 	//Новые модели и текстуры
+	m_meshes.emplace("cloud", Mesh("res/meshes/ball.obj"));
+	m_textures.emplace("cloud", Texture2D("res/textures/ball.jpg"));
+	m_textures.emplace("default", Texture2D("res/textures/default.jpg"));
 	m_meshes.emplace("terrain", Mesh("res/meshes/terrain.obj"));
 	m_textures.emplace("terrain", Texture2D("res/textures/terrain.jpg"));
 	m_meshes.emplace("tree", Mesh("res/meshes/tree.obj"));
