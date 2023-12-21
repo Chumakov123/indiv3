@@ -8,6 +8,8 @@
 #include <chrono>
 #include <string>
 #include <unordered_map>
+#include <random>
+#include <cmath>
 #define MAX_LIGHTS 10
 
 Application& Application::get_instance()
@@ -83,6 +85,69 @@ struct Light {
 	float cutOff;
 };
 
+class PlayerControl
+{
+
+};
+
+class CloudManager
+{
+	std::vector<GameObject*> clouds;
+	std::vector<std::vector<glm::vec3>> wayPoints;
+	std::vector<int> targetWayPoint;
+public:
+	float rotationSpeed = 60;
+	float moveSpeed = 8;
+	CloudManager() {}
+	std::vector<glm::vec3> CreateWay(GameObject* cloud, int count = 10, float range = 10)
+	{
+		std::vector<glm::vec3> result;
+		glm::vec3 startPoint = cloud->position;
+
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_real_distribution<float> xDist(startPoint.x - range, startPoint.x + range);
+		std::uniform_real_distribution<float> zDist(startPoint.z - range, startPoint.z + range);
+
+		for (int i = 0; i < count; ++i)
+		{
+			glm::vec3 randomPosition = glm::vec3(xDist(gen), cloud->position.y, zDist(gen));
+			result.push_back(randomPosition);
+		}
+		result.push_back(startPoint);
+
+		return result;
+	}
+	void AddCloud(GameObject* cloud)
+	{
+		clouds.push_back(cloud);
+		targetWayPoint.push_back(0);
+
+		wayPoints.push_back(CreateWay(cloud));
+
+	}
+	void Update(float deltaTime)
+	{
+		for (int i = 0; i < clouds.size(); ++i) {
+			int currentTargetIndex = targetWayPoint[i];
+			glm::vec3 targetPosition = wayPoints[i][currentTargetIndex];
+			glm::vec3 direction = glm::normalize(targetPosition - clouds[i]->position);
+
+			float distanceToTarget = glm::distance(clouds[i]->position, targetPosition);
+			float interpolationFactor = glm::clamp(moveSpeed * deltaTime / distanceToTarget, 0.0f, 1.0f);
+
+			clouds[i]->position = glm::mix(clouds[i]->position, targetPosition, interpolationFactor);
+
+			if (distanceToTarget < 0.1) {
+				targetWayPoint[i] = (targetWayPoint[i] + 1) % wayPoints[i].size();
+			}
+
+			clouds[i]->rotation.z += rotationSpeed * deltaTime;
+		}
+	}
+};
+CloudManager cloudManager = CloudManager();
+
 void RenderObject(GameObject* gameObject, ShaderProgram* program);
 glm::mat4 RotationMatrix(const glm::vec3& rotationAngles);
 void AddLight(Light* source);
@@ -93,17 +158,24 @@ void ApplyLight(ShaderProgram* program, Light* lightSource, int i);
 std::unordered_map<std::string, GameObject*> gameObjects;
 Light* lightSources[MAX_LIGHTS];
 int numLights = 0;
-
+auto lastTime = std::chrono::high_resolution_clock::now();
 void Application::start()
 {
+	lastTime = std::chrono::high_resolution_clock::now();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> xDist(-75.0f, 63.0f);
+	std::uniform_real_distribution<float> yDist(28.0f, 32.0f);
+	std::uniform_real_distribution<float> zDist(-71.0f, 58.0f);
+	std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
 
 	Renderer::setClearColor(65.0f / 255.0f, 74.0f / 255.0f, 76.0f / 255.0f, 1.0f);
 
 	ResourceManager* resources = &ResourceManager::getInstance();
-	Texture2D* texture_skull = &resources->getTexture("skull");
-	Texture2D* texture_barrel = &resources->getTexture("barrel");
-	Mesh* skull_obj = &resources->getMesh("skull");
-	Mesh* barrel_obj = &resources->getMesh("barrel");
+	//Texture2D* texture_skull = &resources->getTexture("skull");
+	//Texture2D* texture_barrel = &resources->getTexture("barrel");
+	//Mesh* skull_obj = &resources->getMesh("skull");
+	//Mesh* barrel_obj = &resources->getMesh("barrel");
 
 #pragma region Materials
 	Material defaultMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
@@ -121,10 +193,10 @@ void Application::start()
 					 glm::vec3(0.7f, 0.7f, 0.7f),  // emissionColor
 					 glm::vec3(0.01f, 0.01f, 0.01f),  // ambientColor
 					 32.0f };                      // shininess
-	Material cloudMaterial = { glm::vec3(1.0f, 1.0f, 1.0f), // diffuseColor
+	Material cloudMaterial = { glm::vec3(0.5f, 0.5f, 0.5f), // diffuseColor
 					 glm::vec3(0.8f, 0.8f, 1.0f),  // specularColor
 					 glm::vec3(0.1f, 0.1f, 0.1f),  // emissionColor
-					 glm::vec3(0.3f, 0.3f, 0.3f),  // ambientColor
+					 glm::vec3(0.2f, 0.2f, 0.2f),  // ambientColor
 					 64.0f };
 #pragma endregion
 
@@ -152,7 +224,20 @@ void Application::start()
 	gameObjects["lamp2"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(14.2697, 16.6533, -8.7417));
 	gameObjects["lamp3"] = new GameObject(lampObj, defaultTex, &lampMaterial, 0.05, glm::vec3(-22.5987, 13.2782, 29.4179));
 
-	gameObjects["cloud0"] = new GameObject(cloudObj, cloudTex, &cloudMaterial, 0.75, glm::vec3(-22.5987, 30.2782, -10.8146), glm::vec3(-90, 0, 0));
+	//gameObjects["cloud0"] = new GameObject(cloudObj, cloudTex, &cloudMaterial, 0.75, glm::vec3(-22.5987, 30.2782, -10.8146), glm::vec3(-90, 0, 0));
+
+	for (int i = 0; i < 6; ++i) {
+		// Генерация случайных координат и угла поворота
+		float x = xDist(gen);
+		float y = yDist(gen);
+		float z = zDist(gen);
+		float rot = rotDist(gen);
+
+		// Создание объекта и добавление его в map
+		std::string objName = "cloud" + std::to_string(i);
+		gameObjects[objName] = new GameObject(cloudObj, cloudTex, &cloudMaterial, 0.75, glm::vec3(x, y, z), glm::vec3(-90, 0, rot));
+		cloudManager.AddCloud(gameObjects[objName]);
+	}
 
 	//Матрица проекции - не меняется между кадрами, поэтому устанавливается вне цикла
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 200.0f);
@@ -205,6 +290,13 @@ void Application::start()
 	// Game loop
 	auto start = std::chrono::steady_clock::now();
 	while (!glfwWindowShouldClose(window)) {
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<float> duration = currentTime - lastTime;
+		float deltaTime = duration.count();
+		cloudManager.Update(deltaTime);
+		lastTime = currentTime;
+
 		glfwPollEvents();
 
 		Renderer::clear();
